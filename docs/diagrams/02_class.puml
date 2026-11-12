@@ -1,0 +1,138 @@
+@startuml 02_class
+title Class diagrammasi (domen modellari va servislar)
+skinparam classAttributeIconSize 0
+hide empty members
+
+package "models (ORM = database jadvallari)" {
+  class User {
+    +id: int
+    +username: str
+    +email: str
+    +password_hash: str
+    +full_name: str
+    +role: ADMIN|TEACHER
+    +is_active: bool
+    +created_at: datetime
+  }
+  class Teacher {
+    +id: int
+    +user_id: int
+    +department: str
+    +phone: str
+  }
+  class Group {
+    +id: int
+    +name: str
+    +course_year: int
+    +specialty: str
+    +curator_id: int
+  }
+  class Student {
+    +id: int
+    +student_code: str
+    +full_name: str
+    +email: str
+    +phone: str
+    +birth_date: date
+    +group_id: int
+    +status: ACTIVE|LEAVE|EXPELLED
+  }
+  class Subject {
+    +id: int
+    +code: str
+    +name: str
+    +credits: int
+    +semester: int
+    +teacher_id: int
+  }
+  class Enrollment {
+    +id: int
+    +student_id: int
+    +subject_id: int
+    +enrolled_at: date
+  }
+  class Grade {
+    +id: int
+    +enrollment_id: int
+    +grade_type: CURRENT|MIDTERM|FINAL
+    +score: float
+    +max_score: float
+    +graded_at: date
+    +created_by: int
+  }
+  class Attendance {
+    +id: int
+    +enrollment_id: int
+    +lesson_date: date
+    +status: PRESENT|ABSENT|LATE|EXCUSED
+    +created_by: int
+  }
+  class RiskAssessment {
+    +id: int
+    +student_id: int
+    +avg_score: float
+    +attendance_rate: float
+    +trend_score: float
+    +risk_score: float
+    +risk_level: LOW|MEDIUM|HIGH|CRITICAL
+    +calculated_at: datetime
+  }
+  class Notification {
+    +id: int
+    +recipient_user_id: int
+    +student_id: int
+    +risk_assessment_id: int
+    +title: str
+    +message: str
+    +channel: IN_APP|EMAIL
+    +status: PENDING|SENT|FAILED
+    +is_read: bool
+  }
+}
+
+package "services (biznes mantiq)" {
+  class GradeCalculator <<calculator.py>> {
+    +to_percent(score, max): float
+    +weighted_average(grades): float
+    +attendance_rate(statuses): float
+    +trend_score(percents): float
+  }
+  class RiskEngine <<risk.py>> {
+    +compute_risk(avg, att, trend): RiskResult
+    +level_for(score): str
+    +should_notify(prev, new): bool
+  }
+  class RiskService <<risk_service.py>> {
+    +collect_metrics(db, student_id)
+    +assess_student(db, student_id)
+    +assess_all(db)
+  }
+  class Notifier <<notifier.py>> {
+    +recipients_for(db, student, level)
+    +notify_risk(db, student, assessment)
+    +send_email(to, subject, body)
+  }
+}
+
+User "1" -- "0..1" Teacher : profil
+Teacher "1" -- "0..*" Group : kurator
+Teacher "1" -- "0..*" Subject : o'qitadi
+Group "1" -- "1..*" Student : tarkibida
+Student "1" -- "0..*" Enrollment
+Subject "1" -- "0..*" Enrollment
+Enrollment "1" -- "0..*" Grade
+Enrollment "1" -- "0..*" Attendance
+Student "1" -- "0..*" RiskAssessment : tarix
+RiskAssessment "1" -- "0..*" Notification
+User "1" -- "0..*" Notification : oluvchi
+User "1" -- "0..*" Grade : kiritgan
+Student "1" -- "0..*" Notification
+
+RiskService ..> GradeCalculator : ishlatadi
+RiskService ..> RiskEngine : ishlatadi
+RiskService ..> Notifier : ishlatadi
+RiskService ..> Grade
+RiskService ..> Attendance
+RiskService ..> RiskAssessment : yaratadi
+Notifier ..> Notification : yaratadi
+@enduml

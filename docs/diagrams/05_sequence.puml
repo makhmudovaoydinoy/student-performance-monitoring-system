@@ -1,0 +1,39 @@
+@startuml 05_sequence
+title Sequence diagrammasi - O'qituvchi baho kiritadi, tizim risk hisoblaydi va ogohlantiradi
+autonumber
+actor "O'qituvchi" as T
+participant "Frontend\n(app.js)" as FE
+participant "Router\n/api/grades" as API
+participant "deps.py\n(JWT, RBAC)" as Sec
+participant "RiskService" as RS
+participant "GradeCalculator\n+ RiskEngine" as ALG
+participant "Notifier" as N
+database "PostgreSQL" as DB
+
+T -> FE : Baho shaklini to'ldiradi
+FE -> API : POST /api/grades (Bearer JWT)
+API -> Sec : get_current_user()
+Sec -> DB : SELECT users WHERE id
+Sec --> API : User (role=TEACHER)
+API -> DB : SELECT enrollment, subject
+API -> API : can_manage_subject()
+alt fan o'qituvchiga biriktirilmagan
+  API --> FE : 403 Forbidden
+else ruxsat bor
+  API -> DB : INSERT INTO grades
+  API -> RS : assess_student(student_id)
+  RS -> DB : SELECT grades, attendance
+  RS -> ALG : weighted_average, attendance_rate, trend_score
+  ALG --> RS : avg, att, trend
+  RS -> ALG : compute_risk(avg, att, trend)
+  ALG --> RS : risk_score, risk_level
+  RS -> DB : INSERT/UPDATE risk_assessments
+  alt daraja HIGH/CRITICAL va yomonlashgan
+    RS -> N : notify_risk(student, assessment)
+    N -> DB : INSERT INTO notifications (IN_APP, EMAIL)
+  end
+  API -> DB : COMMIT
+  API --> FE : 201 {id, risk_level, risk_score}
+  FE --> T : "Saqlandi. Xavf darajasi: ..."
+end
+@enduml

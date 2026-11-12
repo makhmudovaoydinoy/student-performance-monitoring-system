@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: student_monitoring
+      POSTGRES_USER: monitor
+      POSTGRES_PASSWORD: monitor_pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monitor -d student_monitoring"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://monitor:monitor_pass@db:5432/student_monitoring
+      SECRET_KEY: docker-dev-secret-change-me
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: Admin123!
+      ADMIN_EMAIL: nabdurazaqov@gmail.com
+      SCHEDULER_TOKEN: local-scheduler-token
+    ports:
+      - "8080:8080"
+volumes:
+  pgdata:

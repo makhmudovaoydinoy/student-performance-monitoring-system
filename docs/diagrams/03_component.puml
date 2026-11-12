@@ -1,0 +1,88 @@
+@startuml 03_component
+title Component diagrammasi - dasturiy majmuaning o'zaro bog'liq qismlari
+skinparam componentStyle rectangle
+
+actor "Foydalanuvchi\n(brauzer)" as User
+
+package "Frontend (SPA)" {
+  [index.html + css/style.css] as UI
+  [app.js\n(router, API client)] as JS
+  [Chart.js\n(grafiklar)] as Charts
+}
+
+package "Backend (FastAPI, Python)" {
+  [main.py\n(CORS, logging, /health, statik fayllar)] as Main
+  package "Routers (REST API)" {
+    [auth] as RAuth
+    [users] as RUsers
+    [academic\n(groups, subjects, enrollments)] as RAcad
+    [students] as RStud
+    [grades\n(baho + davomat)] as RGrades
+    [risk] as RRisk
+    [notifications] as RNotif
+    [dashboard] as RDash
+  }
+  [deps.py + security.py\n(JWT, bcrypt, RBAC)] as Sec
+  package "Services" {
+    [calculator.py] as Calc
+    [risk.py] as RiskEng
+    [risk_service.py] as RiskSvc
+    [notifier.py] as Notifier
+    [queries.py\n(scope)] as Queries
+  }
+  [SQLAlchemy ORM\n(models.py)] as ORM
+}
+
+database "PostgreSQL\n(Cloud SQL)" as DB
+
+cloud "Google Cloud" {
+  [Cloud Scheduler] as Sched
+  [Secret Manager] as Secrets
+  [Cloud Logging /\nMonitoring] as Logs
+}
+[SMTP server\n(ixtiyoriy)] as SMTP
+
+User --> UI
+UI --> JS
+JS --> Charts
+JS --> Main : HTTPS + JWT (JSON)
+Main --> RAuth
+Main --> RUsers
+Main --> RAcad
+Main --> RStud
+Main --> RGrades
+Main --> RRisk
+Main --> RNotif
+Main --> RDash
+RAuth ..> Sec
+RUsers ..> Sec
+RAcad ..> Sec
+RStud ..> Sec
+RGrades ..> Sec
+RRisk ..> Sec
+RNotif ..> Sec
+RDash ..> Sec
+RGrades --> RiskSvc
+RRisk --> RiskSvc
+RStud --> Queries
+RDash --> Queries
+RiskSvc --> Calc
+RiskSvc --> RiskEng
+RiskSvc --> Notifier
+Notifier --> SMTP
+RAuth --> ORM
+RUsers --> ORM
+RAcad --> ORM
+RStud --> ORM
+RGrades --> ORM
+RRisk --> ORM
+RNotif --> ORM
+RDash --> ORM
+RiskSvc --> ORM
+Notifier --> ORM
+Queries --> ORM
+ORM --> DB : SQL (psycopg2)
+Sched --> RRisk : POST /api/risk/scheduler-run\n(X-Scheduler-Token)
+Secrets ..> Main : SECRET_KEY, DATABASE_URL
+Main ..> Logs : stdout loglar
+@enduml

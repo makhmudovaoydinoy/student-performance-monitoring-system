@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Talabalar o'zlashtirishini kuzatish tizimi</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Kirish oynasi -->
+  <div id="login-view" class="login-wrap">
+    <form id="login-form" class="login-card">
+      <div class="logo">🎓</div>
+      <h1>O'zlashtirishni kuzatish tizimi</h1>
+      <p class="muted">Erta ogohlantirish va tahlil platformasi</p>
+      <label>Login<input name="username" autocomplete="username" required autofocus></label>
+      <label>Parol<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit">Kirish</button>
+      <p id="login-error" class="error"></p>
+    </form>
+  </div>
+
+  <!-- Asosiy ilova -->
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="brand">🎓 <span>Monitoring</span></div>
+      <nav id="nav"></nav>
+      <div class="side-foot">
+        <div id="user-box"></div>
+        <button id="logout" class="btn ghost">Chiqish</button>
+      </div>
+    </aside>
+    <main>
+      <header class="topbar">
+        <button id="menu-btn" class="btn ghost menu-btn">☰</button>
+        <h2 id="page-title"></h2>
+        <a href="#/notifications" class="bell" title="Xabarnomalar">🔔<span id="bell-count" class="badge hidden">0</span></a>
+      </header>
+      <section id="view"></section>
+    </main>
+  </div>
+
+  <dialog id="modal">
+    <div class="modal-head"><h3 id="modal-title"></h3><button class="btn ghost" id="modal-close">✕</button></div>
+    <div id="modal-body"></div>
+  </dialog>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

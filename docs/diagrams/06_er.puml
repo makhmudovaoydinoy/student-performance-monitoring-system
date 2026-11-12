@@ -1,0 +1,126 @@
+@startuml 06_er
+title ER diagramma (database/schema.sql bilan mos)
+hide circle
+skinparam linetype ortho
+
+entity users {
+  * id : SERIAL <<PK>>
+  --
+  * username : VARCHAR(50) <<UNIQUE>>
+  * email : VARCHAR(120) <<UNIQUE>>
+  * password_hash : VARCHAR(255)
+  * full_name : VARCHAR(120)
+  * role : VARCHAR(10)
+  * is_active : BOOLEAN = TRUE
+  * created_at : TIMESTAMP
+}
+entity teachers {
+  * id : SERIAL <<PK>>
+  --
+  * user_id : INT <<FK, UNIQUE>>
+  department : VARCHAR(100)
+  phone : VARCHAR(20)
+}
+entity groups {
+  * id : SERIAL <<PK>>
+  --
+  * name : VARCHAR(30) <<UNIQUE>>
+  * course_year : SMALLINT
+  * specialty : VARCHAR(100)
+  curator_id : INT <<FK>>
+  * created_at : TIMESTAMP
+}
+entity students {
+  * id : SERIAL <<PK>>
+  --
+  * student_code : VARCHAR(20) <<UNIQUE>>
+  * full_name : VARCHAR(120)
+  email : VARCHAR(120)
+  phone : VARCHAR(20)
+  birth_date : DATE
+  * group_id : INT <<FK>>
+  * status : VARCHAR(10) = 'ACTIVE'
+  * created_at : TIMESTAMP
+}
+entity subjects {
+  * id : SERIAL <<PK>>
+  --
+  * code : VARCHAR(20) <<UNIQUE>>
+  * name : VARCHAR(120)
+  * credits : SMALLINT = 3
+  * semester : SMALLINT = 1
+  teacher_id : INT <<FK>>
+}
+entity enrollments {
+  * id : SERIAL <<PK>>
+  --
+  * student_id : INT <<FK>>
+  * subject_id : INT <<FK>>
+  * enrolled_at : DATE
+  UNIQUE(student_id, subject_id)
+}
+entity grades {
+  * id : SERIAL <<PK>>
+  --
+  * enrollment_id : INT <<FK>>
+  * grade_type : VARCHAR(10) = 'CURRENT'
+  * score : NUMERIC(5,2)
+  * max_score : NUMERIC(5,2) = 100
+  * graded_at : DATE
+  comment : VARCHAR(255)
+  created_by : INT <<FK>>
+  * created_at : TIMESTAMP
+}
+entity attendance {
+  * id : SERIAL <<PK>>
+  --
+  * enrollment_id : INT <<FK>>
+  * lesson_date : DATE
+  * status : VARCHAR(10) = 'PRESENT'
+  note : VARCHAR(255)
+  created_by : INT <<FK>>
+  * created_at : TIMESTAMP
+  UNIQUE(enrollment_id, lesson_date)
+}
+entity risk_assessments {
+  * id : SERIAL <<PK>>
+  --
+  * student_id : INT <<FK>>
+  avg_score : NUMERIC(5,2)
+  attendance_rate : NUMERIC(5,2)
+  * trend_score : NUMERIC(5,2) = 0
+  * risk_score : NUMERIC(5,2)
+  * risk_level : VARCHAR(10)
+  * calculated_at : TIMESTAMP
+}
+entity notifications {
+  * id : SERIAL <<PK>>
+  --
+  * recipient_user_id : INT <<FK>>
+  student_id : INT <<FK>>
+  risk_assessment_id : INT <<FK>>
+  * title : VARCHAR(150)
+  * message : TEXT
+  * channel : VARCHAR(10) = 'IN_APP'
+  * status : VARCHAR(10) = 'PENDING'
+  * is_read : BOOLEAN = FALSE
+  * created_at : TIMESTAMP
+  sent_at : TIMESTAMP
+}
+
+users ||--o| teachers : "1:1"
+teachers ||--o{ groups : "kurator 1:N"
+teachers ||--o{ subjects : "o'qitadi 1:N"
+groups ||--o{ students : "1:N"
+students ||--o{ enrollments : "1:N"
+subjects ||--o{ enrollments : "1:N"
+note "students <-> subjects = M:N\n(enrollments bog'lovchi jadval orqali)" as N1
+enrollments ||--o{ grades : "1:N"
+enrollments ||--o{ attendance : "1:N"
+students ||--o{ risk_assessments : "1:N"
+risk_assessments ||--o{ notifications : "1:N"
+users ||--o{ notifications : "oluvchi 1:N"
+students ||--o{ notifications : "1:N"
+users ||--o{ grades : "kiritgan 1:N"
+users ||--o{ attendance : "kiritgan 1:N"
+@enduml

@@ -1,0 +1,46 @@
+@startuml 04_deployment
+title Deployment diagrammasi - Google Cloud Platform
+skinparam nodeStyle rectangle
+
+node "Foydalanuvchi qurilmasi" as Client {
+  artifact "Web brauzer" as Browser
+}
+
+node "GitHub" as GH {
+  artifact "Repository:\nstudent-performance-monitoring-system" as Repo
+  artifact "GitHub Actions (CI: pytest)" as CI
+}
+
+cloud "Google Cloud Platform (project: student-monitoring)" {
+  node "Cloud Build + Artifact Registry" as Build {
+    artifact "Docker image" as Image
+  }
+  node "Cloud Run (serverless konteyner)" as Run {
+    artifact "FastAPI + Frontend\n(Dockerfile, port 8080)" as App
+  }
+  database "Cloud SQL for PostgreSQL 15\n(db-f1-micro, avtomatik backup)" as SQL
+  node "Secret Manager" as SM {
+    artifact "SECRET_KEY\nDATABASE_URL\nSCHEDULER_TOKEN" as Sec
+  }
+  node "Cloud Scheduler" as Sch {
+    artifact "Kechasi 02:00 job" as Job
+  }
+  node "Cloud Storage" as GCS {
+    artifact "Bucket: DB eksport/zaxira nusxalari" as Bkt
+  }
+  node "Cloud Logging + Monitoring" as Mon {
+    artifact "Uptime check /health\nAlert policy" as Alert
+  }
+}
+
+Browser --> App : HTTPS (TLS, Google boshqaradi)
+Repo --> CI : push
+Repo --> Image : gcloud run deploy --source .
+Image --> App : deploy
+App --> SQL : Cloud SQL ulanishi\n(unix socket /cloudsql/...)
+App ..> Sec : env secrets
+Job --> App : POST /api/risk/scheduler-run
+SQL --> Bkt : gcloud sql export sql
+App ..> Mon : loglar, metrikalar
+Alert --> App : GET /health
+@enduml

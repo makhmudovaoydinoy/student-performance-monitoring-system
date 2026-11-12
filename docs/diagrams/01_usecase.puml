@@ -1,0 +1,58 @@
+@startuml 01_usecase
+title Use Case diagrammasi - Talabalar o'zlashtirishini kuzatish tizimi
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Administrator" as Admin
+actor "O'qituvchi" as Teacher
+actor "Cloud Scheduler\n(tizim)" as Sched
+
+rectangle "Talabalar o'zlashtirishini kuzatish va erta ogohlantirish tizimi" {
+  usecase "Tizimga kirish\n(login, JWT)" as UC_Login
+  usecase "Foydalanuvchilarni boshqarish" as UC_Users
+  usecase "Talabalarni boshqarish (CRUD)" as UC_Students
+  usecase "Guruh va fanlarni boshqarish" as UC_Academic
+  usecase "Talabani fanga yozish\n(enrollment)" as UC_Enroll
+  usecase "Baho kiritish" as UC_Grade
+  usecase "Davomat belgilash" as UC_Att
+  usecase "O'zlashtirishni hisoblash\n(o'rtacha ball, davomat %)" as UC_Calc
+  usecase "Risk baholash" as UC_Risk
+  usecase "Xabarnoma yuborish" as UC_Notify
+  usecase "Xavf guruhini ko'rish" as UC_AtRisk
+  usecase "Dashboard va grafiklarni ko'rish" as UC_Dash
+  usecase "Xabarnomalarni o'qish" as UC_Read
+  usecase "Hisobotni CSV yuklab olish" as UC_Csv
+  usecase "Barcha talabalarni\nqayta baholash" as UC_Batch
+}
+
+Admin --> UC_Users
+Admin --> UC_Students
+Admin --> UC_Academic
+Admin --> UC_Enroll
+Admin --> UC_Grade
+Admin --> UC_Att
+Admin --> UC_AtRisk
+Admin --> UC_Dash
+Admin --> UC_Read
+Admin --> UC_Csv
+Admin --> UC_Batch
+
+Teacher --> UC_Grade : o'z fanlari
+Teacher --> UC_Att : o'z fanlari
+Teacher --> UC_AtRisk : o'z talabalari
+Teacher --> UC_Dash
+Teacher --> UC_Read
+Teacher --> UC_Csv
+
+Sched --> UC_Batch : har kecha
+
+UC_Users ..> UC_Login : <<include>>
+UC_Students ..> UC_Login : <<include>>
+UC_Grade ..> UC_Login : <<include>>
+UC_Att ..> UC_Login : <<include>>
+UC_Grade ..> UC_Calc : <<include>>
+UC_Att ..> UC_Calc : <<include>>
+UC_Batch ..> UC_Calc : <<include>>
+UC_Calc ..> UC_Risk : <<include>>
+UC_Notify ..> UC_Risk : <<extend>>\n[HIGH yoki CRITICAL]
+@enduml
