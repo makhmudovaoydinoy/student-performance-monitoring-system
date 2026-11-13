@@ -47,6 +47,17 @@ CREATE TABLE students (
     created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+
+-- 4a. student_accounts: talaba uchun alohida login-parol
+CREATE TABLE student_accounts (
+    id            SERIAL       PRIMARY KEY,
+    student_id    INTEGER      NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
+    username      VARCHAR(50)  NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
 -- 5. subjects (fan -> bitta mas'ul o'qituvchi)
 CREATE TABLE subjects (
     id         SERIAL       PRIMARY KEY,
