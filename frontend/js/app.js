@@ -102,6 +102,7 @@ $("#menu-btn").addEventListener("click", () => document.querySelector(".sidebar"
 
 /* ============ Sahifalar ro'yxati va router ============ */
 const PAGES = {
+  studentHome: { title: "🎓 Mening kabinetim", roles: ["STUDENT"], render: pageStudentHome },
   dashboard: { title: "📊 Dashboard", roles: ["ADMIN", "TEACHER"], render: pageDashboard },
   students: { title: "👩‍🎓 Talabalar", roles: ["ADMIN", "TEACHER"], render: pageStudents },
   academic: { title: "📚 Guruhlar va fanlar", roles: ["ADMIN", "TEACHER"], render: pageAcademic },
@@ -119,14 +120,15 @@ function startApp() {
   $("#nav").innerHTML = Object.entries(PAGES)
     .filter(([, p]) => p.roles.includes(S.user.role))
     .map(([k, p]) => `<a href="#/${k}" data-page="${k}">${p.title}</a>`).join("");
-  if (!location.hash) { location.hash = "#/dashboard"; return; } // hashchange route() ni chaqiradi
+  if (!location.hash) { location.hash = S.user.role === "STUDENT" ? "#/studentHome" : "#/dashboard"; return; } // hashchange route() ni chaqiradi
   route();
 }
 
 async function route() {
   if (!S.token) return showLogin();
   const key = (location.hash.replace("#/", "") || "dashboard");
-  const page = PAGES[key] && PAGES[key].roles.includes(S.user.role) ? PAGES[key] : PAGES.dashboard;
+  const defaultKey = S.user.role === "STUDENT" ? "studentHome" : "dashboard";
+  const page = PAGES[key] && PAGES[key].roles.includes(S.user.role) ? PAGES[key] : PAGES[defaultKey];
   const pageKey = Object.keys(PAGES).find((k) => PAGES[k] === page);
   document.querySelectorAll("nav a").forEach((a) => a.classList.toggle("active", a.dataset.page === pageKey));
   document.querySelector(".sidebar").classList.remove("open");
@@ -228,6 +230,7 @@ async function pageStudents(v) {
         <label>Talaba kodi<input name="student_code" required minlength="3" value="${esc(s.student_code)}"></label>
         <label>F.I.Sh.<input name="full_name" required minlength="3" value="${esc(s.full_name)}"></label>
         <label>Email<input name="email" type="email" value="${esc(s.email)}"></label>
+        ${s.id ? "" : '<label>Talaba logini<input name="username" required minlength="3"></label><label>Parol<input name="password" type="password" required minlength="8"></label>'}
         <label>Telefon<input name="phone" value="${esc(s.phone)}"></label>
         <label>Tug'ilgan sana<input name="birth_date" type="date" value="${esc(fdate(s.birth_date) === "—" ? "" : fdate(s.birth_date))}"></label>
         <label>Guruh<select name="group_id" required>${opts(groups, "id", (g) => g.name, s.group_id)}</select></label>
@@ -240,7 +243,7 @@ async function pageStudents(v) {
       data.group_id = toInt(data.group_id);
       try {
         await api(s.id ? `/students/${s.id}` : "/students", { method: s.id ? "PUT" : "POST", body: data });
-        closeModal(); toast("Saqlandi"); load();
+        closeModal(); toast(s.id ? "Ma'lumotlar saqlandi" : "Talaba va login-paroli yaratildi"); load();
       } catch (err) { toast(err.message, true); }
     });
   }
@@ -474,6 +477,24 @@ async function pageUsers(v) {
       try { await api(`/users/${b.dataset.deact}`, { method: "DELETE" }); route(); } catch (err) { toast(err.message, true); }
     }
   };
+}
+
+
+/* Talaba shaxsiy kabineti */
+async function pageStudentHome(v) {
+  const s = await api(`/students/${S.user.student_id}`);
+  const riskText = LEVELS[s.risk_level] || "Hali hisoblanmagan";
+  const statusText = { PRESENT: "Keldi", ABSENT: "Kelmadi", LATE: "Kechikdi", EXCUSED: "Sababli" };
+  const kpi = (label, value) => `<div class="card kpi"><div class="v">${value}</div><div class="l">${label}</div></div>`;
+  v.innerHTML = `
+    <div class="card"><h3>${esc(s.full_name)}</h3><p class="muted">Talaba kodi: ${esc(s.student_code)} · Guruh: ${esc(s.group_name)}</p><p>Risk darajasi: <b>${esc(riskText)}</b></p></div>
+    <div class="grid kpis">${kpi("O'zlashtirish", s.avg_score == null ? "—" : fmt(s.avg_score) + "%")}${kpi("Davomat", s.attendance_rate == null ? "—" : fmt(s.attendance_rate) + "%")}${kpi("Xavf bali", s.risk_score == null ? "—" : fmt(s.risk_score))}</div>
+    <div class="card"><h3>Fanlarim</h3><div class="table-wrap"><table><tr><th>Fan</th><th>O'rtacha ball</th><th>Davomat</th></tr>
+    ${s.subjects.map(x => `<tr><td>${esc(x.name)}</td><td>${fmt(x.avg_score)}%</td><td>${fmt(x.attendance_rate)}%</td></tr>`).join("") || '<tr><td colspan="3">Fanlar biriktirilmagan</td></tr>'}</table></div></div>
+    <div class="card"><h3>Baholarim va o'qituvchi izohlari</h3><div class="table-wrap"><table><tr><th>Sana</th><th>Fan</th><th>Turi</th><th>Ball</th><th>Izoh</th></tr>
+    ${s.grades.slice().reverse().map(g => `<tr><td>${fdate(g.graded_at)}</td><td>${esc(g.subject)}</td><td>${GTYPES[g.grade_type] || g.grade_type}</td><td>${fmt(g.percent)}%</td><td>${esc(g.comment || "—")}</td></tr>`).join("") || '<tr><td colspan="5">Baholar hali kiritilmagan</td></tr>'}</table></div></div>
+    <div class="card"><h3>Davomat tarixim</h3><div class="table-wrap"><table><tr><th>Sana</th><th>Fan</th><th>Holat</th><th>Izoh</th></tr>
+    ${s.attendance_list.map(a => `<tr><td>${fdate(a.lesson_date)}</td><td>${esc(a.subject)}</td><td>${statusText[a.status] || a.status}</td><td>${esc(a.note || "—")}</td></tr>`).join("") || '<tr><td colspan="4">Davomat hali kiritilmagan</td></tr>'}</table></div></div>`;
 }
 
 /* ============ Ishga tushirish ============ */
