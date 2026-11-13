@@ -66,14 +66,14 @@ if not exist "backend\app\main.py" (
 
 cd /d "%ROOT%backend"
 echo.
-echo [5/5] Demo ma'lumotlar tayyorlanmoqda...
-python -m app.seed
-if errorlevel 1 goto error
+echo [5/5] Demo ma'lumotlar avtomatik yuklanmaydi.
+echo       Baza bo'sh bo'lsa, administrator avtomatik yaratiladi.
+echo.
 
 echo.
 echo ================================================
 echo  DASTUR ISHGA TUSHMOQDA
- echo  Brauzer: http://127.0.0.1:8080
+echo  Brauzer: http://127.0.0.1:8080
 echo  API:     http://127.0.0.1:8080/docs
 echo  To'xtatish uchun CMD oynasida CTRL+C bosing.
 echo ================================================
