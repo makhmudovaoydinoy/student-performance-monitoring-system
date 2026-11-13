@@ -63,6 +63,8 @@ def history(student_id: int, db: Session = Depends(get_db), user: User = Depends
 
 @router.post("/students/{student_id}/recalculate")
 def recalc_one(student_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role == "STUDENT":
+        raise HTTPException(403, "Talaba risk hisobini o'zi qayta hisoblay olmaydi")
     cond = scope_condition(db, user, Student.id)
     stmt = select(Student.id).where(Student.id == student_id)
     if cond is not None:
