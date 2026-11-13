@@ -81,6 +81,8 @@ def list_subjects(db: Session = Depends(get_db), user: User = Depends(get_curren
     if user.role == "TEACHER":
         teacher = get_teacher(db, user)
         stmt = stmt.where(Subject.teacher_id == (teacher.id if teacher else -1))
+    elif user.role == "STUDENT":
+        stmt = stmt.where(Subject.id.in_(select(Enrollment.subject_id).where(Enrollment.student_id == user.student_id)))
     return rows_to_dicts(db.execute(stmt).all())
 
 
