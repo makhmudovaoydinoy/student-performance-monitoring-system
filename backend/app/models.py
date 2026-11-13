@@ -60,6 +60,17 @@ class Student(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, server_default=func.now())
 
 
+class StudentAccount(Base):
+    """Talaba uchun alohida login-parol; users jadvalidagi ADMIN/TEACHER hisoblariga tegmaydi."""
+    __tablename__ = "student_accounts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), unique=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, server_default=func.now())
+
+
 class Subject(Base):
     __tablename__ = "subjects"
     id: Mapped[int] = mapped_column(primary_key=True)
