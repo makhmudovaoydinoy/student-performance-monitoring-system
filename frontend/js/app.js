@@ -217,7 +217,7 @@ async function pageStudents(v) {
       ${list.map((s) => `<tr><td>${esc(s.student_code)}</td><td>${esc(s.full_name)}</td><td>${esc(s.group_name)}</td>
         <td>${fmt(s.avg_score)}</td><td>${fmt(s.attendance_rate)}</td><td>${pill(s.risk_level)}</td>
         <td class="actions"><button class="btn small" data-view="${s.id}">Ko'rish</button>
-        ${isAdmin ? `<button class="btn small" data-edit="${s.id}">Tahrir</button><button class="btn small danger" data-del="${s.id}">O'chirish</button>` : ""}</td></tr>`).join("") || '<tr><td colspan="7" class="muted">Talaba topilmadi</td></tr>'}</table>`;
+        ${isAdmin ? `${s.has_account ? '<span class="muted">Login bor</span>' : `<button class="btn small" data-account="${s.id}">Login yaratish</button>`}<button class="btn small" data-edit="${s.id}">Tahrir</button><button class="btn small danger" data-del="${s.id}">O'chirish</button>` : ""}</td></tr>`).join("") || '<tr><td colspan="7" class="muted">Talaba topilmadi</td></tr>'}</table>`;
   }
   let timer;
   $("#f-q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(load, 300); });
@@ -254,6 +254,20 @@ async function pageStudents(v) {
     if (!b) return;
     try {
       if (b.dataset.view) showStudent(b.dataset.view);
+      else if (b.dataset.account) {
+        const student = list.find((x) => String(x.id) === b.dataset.account);
+        const body = openModal("Talaba uchun login yaratish", `<p>${esc(student.full_name)}</p><form class="form-grid">
+          <label>Login<input name="username" required minlength="3"></label>
+          <label>Parol<input name="password" type="password" required minlength="8"></label>
+          <button class="btn primary" type="submit">Login yaratish</button></form>`);
+        $("form", body).addEventListener("submit", async (ev) => {
+          ev.preventDefault();
+          try {
+            await api(`/students/${student.id}/account`, { method: "POST", body: formObj(ev.target) });
+            closeModal(); toast("Talaba login-paroli yaratildi"); load();
+          } catch (err) { toast(err.message, true); }
+        });
+      }
       else if (b.dataset.edit) studentForm(list.find((x) => String(x.id) === b.dataset.edit));
       else if (b.dataset.del && confirm("Talaba va uning barcha baho/davomat yozuvlari o'chiriladi. Davom etasizmi?")) {
         await api(`/students/${b.dataset.del}`, { method: "DELETE" }); toast("O'chirildi"); load();
