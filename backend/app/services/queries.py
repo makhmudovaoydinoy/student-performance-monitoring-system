@@ -40,6 +40,8 @@ def scope_condition(db: Session, user: User, student_id_column):
     o'zi kurator bo'lgan guruh talabalarini ko'radi."""
     if user.role == "ADMIN":
         return None
+    if user.role == "STUDENT":
+        return student_id_column == user.student_id
     teacher = get_teacher(db, user)
     tid = teacher.id if teacher else -1
     by_subject = (
