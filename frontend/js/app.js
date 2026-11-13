@@ -116,7 +116,7 @@ const PAGES = {
 function startApp() {
   $("#login-view").classList.add("hidden");
   $("#app").classList.remove("hidden");
-  $("#user-box").innerHTML = `<b>${esc(S.user.full_name)}</b><br><span class="muted">${S.user.role === "ADMIN" ? "Administrator" : "O'qituvchi"}</span>`;
+  $("#user-box").innerHTML = `<b>${esc(S.user.full_name)}</b><br><span class="muted">${S.user.role === "ADMIN" ? "Administrator" : S.user.role === "STUDENT" ? "Talaba" : "O'qituvchi"}</span>`;
   $("#nav").innerHTML = Object.entries(PAGES)
     .filter(([, p]) => p.roles.includes(S.user.role))
     .map(([k, p]) => `<a href="#/${k}" data-page="${k}">${p.title}</a>`).join("");
