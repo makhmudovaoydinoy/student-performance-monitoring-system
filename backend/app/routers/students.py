@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import commit_or_409, get_current_user, require_admin
-from ..models import Attendance, Enrollment, Grade, RiskAssessment, Student, Subject, User
-from ..schemas import StudentIn
+from ..models import Attendance, Enrollment, Grade, RiskAssessment, Student, StudentAccount, Subject, User
+from ..schemas import StudentAccountIn, StudentCreate, StudentIn
+from ..security import hash_password
 from ..services.calculator import attendance_rate, to_percent, weighted_average
 from ..services.queries import rows_to_dicts, scope_condition, student_risk_select
 from ..services.risk_service import assess_student
@@ -48,15 +49,44 @@ def list_students(
     if risk_level:
         stmt = stmt.where(RiskAssessment.risk_level == risk_level.upper())
     stmt = stmt.order_by(Student.full_name).offset(skip).limit(limit)
-    return rows_to_dicts(db.execute(stmt).all())
+    result = rows_to_dicts(db.execute(stmt).all())
+    account_ids = set(db.scalars(select(StudentAccount.student_id)))
+    for item in result:
+        item["has_account"] = item["id"] in account_ids
+    return result
 
 
 @router.post("", status_code=201)
-def create_student(data: StudentIn, db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    student = Student(**data.model_dump())
+def create_student(data: StudentCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    if db.scalar(select(User.id).where(User.username == data.username)) or db.scalar(
+            select(StudentAccount.id).where(StudentAccount.username == data.username)):
+        raise HTTPException(409, "Bu login allaqachon mavjud")
+    student_data = data.model_dump(exclude={"username", "password"})
+    student = Student(**student_data)
     db.add(student)
-    commit_or_409(db, "Talaba kodi allaqachon mavjud yoki guruh noto'g'ri")
-    return {"id": student.id, **data.model_dump(mode="json")}
+    db.flush()
+    db.add(StudentAccount(student_id=student.id, username=data.username, password_hash=hash_password(data.password)))
+    commit_or_409(db, "Talaba kodi yoki login mavjud, yoxud guruh noto'g'ri")
+    return {"id": student.id, **student_data, "has_account": True}
+
+
+@router.post("/{student_id}/account", status_code=201)
+def create_student_account(student_id: int, data: StudentAccountIn, db: Session = Depends(get_db),
+                           _: User = Depends(require_admin)):
+    student = db.get(Student, student_id)
+    if not student:
+        raise HTTPException(404, "Talaba topilmadi")
+    if student.status != "ACTIVE":
+        raise HTTPException(400, "Faqat faol talabaga login yaratish mumkin")
+    if db.scalar(select(StudentAccount.id).where(StudentAccount.student_id == student_id)):
+        raise HTTPException(409, "Bu talabaga login avval yaratilgan")
+    if db.scalar(select(User.id).where(User.username == data.username)) or db.scalar(
+            select(StudentAccount.id).where(StudentAccount.username == data.username)):
+        raise HTTPException(409, "Bu login allaqachon mavjud")
+    account = StudentAccount(student_id=student_id, username=data.username, password_hash=hash_password(data.password))
+    db.add(account)
+    commit_or_409(db, "Bu login allaqachon mavjud")
+    return {"detail": "Talaba login-paroli yaratildi", "username": account.username}
 
 
 @router.put("/{student_id}")
@@ -99,6 +129,12 @@ def student_detail(student_id: int, db: Session = Depends(get_db), user: User = 
         attendance = db.execute(
             select(Attendance.enrollment_id, Attendance.status).where(Attendance.enrollment_id.in_(ids))
         ).all()
+        attendance_details = db.execute(
+            select(Attendance.enrollment_id, Attendance.lesson_date, Attendance.status, Attendance.note)
+            .where(Attendance.enrollment_id.in_(ids)).order_by(Attendance.lesson_date.desc())
+        ).all()
+    if not ids:
+        attendance_details = []
     subjects = []
     for e in enrollments:
         g = [(x.grade_type, x.score, x.max_score) for x in grades if x.enrollment_id == e.id]
@@ -120,4 +156,10 @@ def student_detail(student_id: int, db: Session = Depends(get_db), user: User = 
                RiskAssessment.avg_score, RiskAssessment.attendance_rate)
         .where(RiskAssessment.student_id == student_id).order_by(RiskAssessment.id)
     ).all()
-    return {**info, "subjects": subjects, "grades": grade_list, "risk_history": rows_to_dicts(history)}
+    attendance_list = [
+        {"subject": next((e.name for e in enrollments if e.id == x.enrollment_id), ""),
+         "lesson_date": x.lesson_date, "status": x.status, "note": x.note}
+        for x in attendance_details
+    ]
+    return {**info, "subjects": subjects, "grades": grade_list, "attendance_list": attendance_list,
+            "risk_history": rows_to_dicts(history)}
