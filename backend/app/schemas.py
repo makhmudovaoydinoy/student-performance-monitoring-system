@@ -20,6 +20,7 @@ class UserOut(ORM):
     full_name: str
     role: str
     is_active: bool
+    student_id: Optional[int] = None
 
 
 class TokenOut(BaseModel):
@@ -66,6 +67,16 @@ class StudentIn(BaseModel):
     birth_date: Optional[date] = None
     group_id: int
     status: Literal["ACTIVE", "LEAVE", "EXPELLED"] = "ACTIVE"
+
+
+class StudentCreate(StudentIn):
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=8, max_length=72)
+
+
+class StudentAccountIn(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=8, max_length=72)
 
 
 class EnrollmentIn(BaseModel):
